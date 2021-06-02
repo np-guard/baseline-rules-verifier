@@ -9,9 +9,15 @@ This module allows verifying a set of network policies against a set of baseline
 
 import argparse
 import subprocess
-import yaml
 import os
+import sys
 from pathlib import Path
+import yaml
+
+base_dir = Path(__file__).parent.resolve()
+common_services_dir = (base_dir / '../baseline-rules/src').resolve()
+sys.path.insert(0, str(common_services_dir))
+
 from baseline_rule import BaselineRules, BaselineRuleAction
 
 
@@ -26,8 +32,8 @@ class NetpolVerifier:
                                'network-config-analyzer', 'venv', 'Scripts', 'python')
         nca_path = Path(Path(__file__).parent.absolute(), '..', '..',
                         'network-config-analyzer', 'network-config-analyzer', 'nca.py')
-        fixed_args = [nca_python_path, nca_path, '--base_np_list', self.netpol_file, '--pod_list', self.repo, '--ns_list',
-                    self.repo]
+        fixed_args = [nca_python_path, nca_path, '--base_np_list', self.netpol_file, '--pod_list', self.repo,
+                      '--ns_list',self.repo]
 
         for rule in self.baseline_rules:
             rule_filename = f'{rule.name}.yaml'
