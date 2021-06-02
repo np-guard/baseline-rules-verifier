@@ -1,0 +1,16 @@
+[
+  {
+    "name": "microservices-access-to-google",
+    "repo": "https://github.com/GoogleCloudPlatform/microservices-demo/tree/master/release",
+    "netpols": "microservices-netpols.yaml",
+    "baselineFiles": ["allow_access_to_google.yaml"],
+    "expected": 1
+  },
+  {
+    "name": "microservices-allow-load-generation",
+    "repo": "https://github.com/GoogleCloudPlatform/microservices-demo/tree/master/release",
+    "netpols": "microservices-netpols.yaml",
+    "baselineFiles": ["allow_load_generation.yaml"],
+    "expected": 0
+  }
+]

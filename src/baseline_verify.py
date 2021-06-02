@@ -29,7 +29,7 @@ class NetpolVerifier:
     def __init__(self, netpol_file, baseline_rules_file, repo):
         self.netpol_file = netpol_file
         self.baseline_rules = BaselineRules(baseline_rules_file)
-        self.repo = Path(repo).absolute()
+        self.repo = repo
 
     def verify(self):
         """
@@ -60,10 +60,12 @@ class NetpolVerifier:
                 num_violated_rules += 1
             os.remove(rule_filename)
 
-        if num_violated_rules:
-            print(f'{num_violated_rules} rules (out of {len(self.baseline_rules)}) are violated')
+        if num_violated_rules == 1:
+            print(f'\n1 rule (out of {len(self.baseline_rules)}) is violated')
+        elif num_violated_rules:
+            print(f'\n{num_violated_rules} rules (out of {len(self.baseline_rules)}) are violated')
         else:
-            print('All rules are satisfied')
+            print('\nAll rules are satisfied')
         return num_violated_rules
 
 
