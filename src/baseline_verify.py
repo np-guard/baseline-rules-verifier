@@ -11,7 +11,9 @@ import argparse
 import subprocess
 import os
 import sys
+import json
 from pathlib import Path
+from urllib import request
 import yaml
 
 base_dir = Path(__file__).parent.resolve()
@@ -31,9 +33,10 @@ class NetpolVerifier:
         self.baseline_rules = BaselineRules(baseline_rules_file)
         self.repo = repo
 
-    def verify(self):
+    def verify(self, pr_url):
         """
         This function is where the actual rule verification happens
+        :param str pr_url: The URL of the PR into which the output should be sent as a comment (if None, send to stdout)
         :return: Number of violated rules
         :rtype: int
         """
@@ -45,6 +48,7 @@ class NetpolVerifier:
                       '--ns_list', self.repo]
 
         num_violated_rules = 0
+        output = ''
         for rule in self.baseline_rules:
             rule_filename = f'{rule.name}.yaml'
             with open(rule_filename, 'w') as baseline_file:
@@ -53,20 +57,50 @@ class NetpolVerifier:
             nca_args = fixed_args + [query, rule_filename]
             nca_run = subprocess.run(nca_args, capture_output=True, text=True, check=False)
             if nca_run.returncode == 0:
-                print(f'\nrule {rule.name} is satisfied')
+                output += f'\nrule {rule.name} is satisfied\n'
             else:
-                print(f'\nrule {rule.name} is violated')
-                print('\n'.join(str(nca_run.stdout).split('\n')[3:5]))
+                output += f'\nrule {rule.name} is violated\n'
+                output += '\n'.join(str(nca_run.stdout).split('\n')[2:5]) + '\n'
                 num_violated_rules += 1
             os.remove(rule_filename)
 
         if num_violated_rules == 1:
-            print(f'\n1 rule (out of {len(self.baseline_rules)}) is violated')
+            output += f'\n1 rule (out of {len(self.baseline_rules)}) is violated\n'
         elif num_violated_rules:
-            print(f'\n{num_violated_rules} rules (out of {len(self.baseline_rules)}) are violated')
+            output += f'\n{num_violated_rules} rules (out of {len(self.baseline_rules)}) are violated\n'
         else:
-            print('\nAll rules are satisfied')
+            output += '\nAll rules are satisfied\n'
+
+        if pr_url:
+            self.write_git_comment(pr_url, output)
+        else:
+            print(output)
+
         return num_violated_rules
+
+    @staticmethod
+    def write_git_comment(pr_url, comment_body):
+        """
+        Add a comment to a PR
+        :param str pr_url: The URL of the PR into which the output should be sent as a comment
+        :param str comment_body:
+        :return: The code returned by the GitHub server (201 means OK)
+        :rtype: int
+        """
+        if 'GHE_TOKEN' not in os.environ:
+            print("ERROR: missing GHE_TOKEN")
+            return 0
+
+        headers = {'Authorization': 'token {0:s}'.format(os.environ['GHE_TOKEN'])}
+        data = {'body': comment_body}
+        req = request.Request(pr_url, headers=headers, data=json.dumps(data).encode('ascii'))
+        with request.urlopen(req) as resp:
+            if resp.status not in [200, 201]:
+                print("request failed, status = ", resp.status, "URL:", pr_url, "message = ", resp.read())
+            else:
+                print("request succeeded, status = ", resp.status, "message = ", resp.read())
+
+            return resp.status
 
 
 def netpol_verify_main(args=None):
@@ -82,9 +116,14 @@ def netpol_verify_main(args=None):
                         help='A baseline-rules file')
     parser.add_argument('--repo', '-r', type=str, metavar='REPOSITORY', required=True,
                         help="Repository with the app's deployments")
+    parser.add_argument('--pr_url', type=str, help='The full api url for adding a PR comment')
+    parser.add_argument('--ghe_token', '--gh_token', type=str, help='A valid token to access a GitHub repository')
     args = parser.parse_args(args)
 
-    return NetpolVerifier(args.netpol_file, args.baseline, args.repo).verify()
+    if args.ghe_token:
+        os.environ['GHE_TOKEN'] = args.ghe_token
+
+    return NetpolVerifier(args.netpol_file, args.baseline, args.repo).verify(args.pr_url)
 
 
 if __name__ == "__main__":
