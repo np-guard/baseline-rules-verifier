@@ -40,11 +40,9 @@ class NetpolVerifier:
         :return: Number of violated rules
         :rtype: int
         """
-        nca_python_path = Path(Path(__file__).parent.absolute(), '..', '..',
-                               'network-config-analyzer', 'venv', 'Scripts', 'python')
         nca_path = Path(Path(__file__).parent.absolute(), '..', '..',
                         'network-config-analyzer', 'network-config-analyzer', 'nca.py')
-        fixed_args = [nca_python_path, nca_path, '--base_np_list', self.netpol_file, '--pod_list', self.repo,
+        fixed_args = [sys.executable, nca_path, '--base_np_list', self.netpol_file, '--pod_list', self.repo,
                       '--ns_list', self.repo]
 
         num_violated_rules = 0
