@@ -125,4 +125,4 @@ def netpol_verify_main(args=None):
 
 
 if __name__ == "__main__":
-    netpol_verify_main()
+    sys.exit(netpol_verify_main())
