@@ -55,9 +55,9 @@ class NetpolVerifier:
             nca_args = fixed_args + [query, rule_filename]
             nca_run = subprocess.run(nca_args, capture_output=True, text=True, check=False)
             if nca_run.returncode == 0:
-                output += f'\n:white_check_mark: rule **{rule.name}** is satisfied\n'
+                output += f'\n:white_check_mark: Rule **{rule.name}** is satisfied\n'
             else:
-                output += f'\n:x: rule **{rule.name}** is violated\n<p><details><summary>Details</summary>'
+                output += f'\n:x: Rule **{rule.name}** is violated\n<p><details><summary>Details</summary>'
                 output += '\n'.join(str(nca_run.stdout).split('\n')[2:5]) + '\n</details></p>\n'
                 num_violated_rules += 1
             os.remove(rule_filename)
