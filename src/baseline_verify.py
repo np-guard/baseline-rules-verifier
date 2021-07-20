@@ -57,8 +57,8 @@ class NetpolVerifier:
             if nca_run.returncode == 0:
                 output += f'\nrule {rule.name} is satisfied\n'
             else:
-                output += f'\nrule {rule.name} is violated\n'
-                output += '\n'.join(str(nca_run.stdout).split('\n')[2:5]) + '\n'
+                output += f'\n:x: rule **{rule.name}** is violated\n<p><details><summary>Details</summary>'
+                output += '\n'.join(str(nca_run.stdout).split('\n')[2:5]) + '\n</details></p>\n'
                 num_violated_rules += 1
             os.remove(rule_filename)
 
