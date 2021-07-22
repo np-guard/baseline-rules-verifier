@@ -18,7 +18,7 @@ This application verifies the connectivity in a given Kubernetes cluster
 python src/baseline_verify.py [-r repoistory] [-b baseline_rules_file] <networkpolicy_file>
 ```
 * `repository` is a path or url to the repository where deployments are defined 
-* `baseline_rules_file` is a yaml file containing a list of baseline rules. See [this example](baseline-rules/examples/ciso_denied_ports.yaml)
+* `baseline_rules_file` is a yaml file containing a list of baseline rules. See [these examples](https://github.com/shift-left-netconfig/baseline-rules/tree/master/examples)
 * 'networkpolicy_file' is a yaml file with Kubernetes NetworkPolicies to verify
 
 For example:
