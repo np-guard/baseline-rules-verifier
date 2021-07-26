@@ -24,6 +24,8 @@ def run_netpol_gen(test_record):
     for baseline in test_record.get('baselineFiles', []):
         args += ['-b', path.join('../baseline-rules/examples', baseline)]
     args += [path.join('netpols', test_record['netpols'])]
+    if len(sys.argv) > 1:
+        args += sys.argv[1:]
 
     args_str = ' '.join(args)
     print(f'Running baseline_verify with args: {args_str}')

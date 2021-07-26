@@ -28,10 +28,11 @@ class NetpolVerifier:
     The main class for verifying a cluster connectivity against baseline rules.
     Converts baseline rules to k8s NetworkPolicy and runs NCA to verify cluster connectivity.
     """
-    def __init__(self, netpol_file, baseline_rules_file, repo):
+    def __init__(self, netpol_file, baseline_rules_file, repo, nca_path):
         self.netpol_file = netpol_file
         self.baseline_rules = BaselineRules(baseline_rules_file)
         self.repo = repo
+        self.nca_path = nca_path
 
     def verify(self, pr_url):
         """
@@ -40,8 +41,7 @@ class NetpolVerifier:
         :return: Number of violated rules
         :rtype: int
         """
-        nca_path = Path(Path(__file__).parent.absolute(), '..', '..',
-                        'network-config-analyzer', 'network-config-analyzer', 'nca.py')
+        nca_path = Path(self.nca_path, 'network-config-analyzer', 'nca.py')
         fixed_args = [sys.executable, nca_path, '--base_np_list', self.netpol_file, '--pod_list', self.repo,
                       '--ns_list', self.repo]
 
@@ -116,12 +116,14 @@ def netpol_verify_main(args=None):
                         help="Repository with the app's deployments")
     parser.add_argument('--pr_url', type=str, help='The full api url for adding a PR comment')
     parser.add_argument('--ghe_token', '--gh_token', type=str, help='A valid token to access a GitHub repository')
+    parser.add_argument('--nca_path', type=str, help='The path to where Network-Config-Analyzer is installed',
+                        default=Path(Path(__file__).parent.absolute(), '..', '..', 'network-config-analyzer'))
     args = parser.parse_args(args)
 
     if args.ghe_token:
         os.environ['GHE_TOKEN'] = args.ghe_token
 
-    return NetpolVerifier(args.netpol_file, args.baseline, args.repo).verify(args.pr_url)
+    return NetpolVerifier(args.netpol_file, args.baseline, args.repo, args.nca_path).verify(args.pr_url)
 
 
 if __name__ == "__main__":
