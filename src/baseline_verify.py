@@ -118,10 +118,14 @@ def netpol_verify_main(args=None):
     parser.add_argument('--ghe_token', '--gh_token', type=str, help='A valid token to access a GitHub repository')
     parser.add_argument('--nca_path', type=str, help='The path to where Network-Config-Analyzer is installed',
                         default=Path(Path(__file__).parent.absolute(), '..', '..', 'network-config-analyzer'))
+    parser.add_argument('--tmp_dir', type=str, help="A directory into which verifier's temporary files can be written")
     args = parser.parse_args(args)
 
     if args.ghe_token:
         os.environ['GHE_TOKEN'] = args.ghe_token
+
+    if args.tmp_dir:
+        os.chdir(args.tmp_dir)
 
     return NetpolVerifier(args.netpol_file, args.baseline, args.repo, args.nca_path).verify(args.pr_url)
 
