@@ -20,7 +20,7 @@ def run_netpol_gen(test_record):
     :param dict test_record: the test record
     :return bool: True if calling netpol_gen_main() was successful,  False otherwise
     """
-    args = ['-r', test_record['repo']]
+    args = ['-r', test_record['repo'], '--debug', '1']
     for baseline in test_record.get('baselineFiles', []):
         args += ['-b', path.join('../baseline-rules/examples', baseline)]
     args += [path.join('netpols', test_record['netpols'])]

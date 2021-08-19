@@ -34,14 +34,15 @@ class NetpolVerifier:
         self.repo = repo
         self.nca_path = nca_path
 
-    def verify(self, pr_url):
+    def verify(self, pr_url, debug):
         """
         This function is where the actual rule verification happens
         :param str pr_url: The URL of the PR into which the output should be sent as a comment (if None, send to stdout)
+        :param debug: If not None, prints more debug information
         :return: Number of violated rules
         :rtype: int
         """
-        nca_path = Path(self.nca_path, 'network-config-analyzer', 'nca.py')
+        nca_path = Path(self.nca_path, 'nca.py')
         fixed_args = [sys.executable, nca_path, '--base_np_list', self.netpol_file, '--pod_list', self.repo,
                       '--ns_list', self.repo]
 
@@ -56,9 +57,15 @@ class NetpolVerifier:
             nca_run = subprocess.run(nca_args, capture_output=True, text=True, check=False)
             if nca_run.returncode == 0:
                 output += f'\n:white_check_mark: Rule **{rule.name}** is satisfied\n'
+                if debug is not None:
+                    output += '\n<p><details><summary>Details</summary>'
+                    output += nca_run.stdout + '\n' + nca_run.stderr + '\n</details></p>\n'
             else:
                 output += f'\n:x: Rule **{rule.name}** is violated\n<p><details><summary>Details</summary>'
-                output += '\n'.join(str(nca_run.stdout).split('\n')[2:5]) + '\n</details></p>\n'
+                if debug is not None:
+                    output += nca_run.stdout + '\n' + nca_run.stderr + '\n</details></p>\n'
+                else:
+                    output += '\n'.join(str(nca_run.stdout).split('\n')[2:5]) + '\n</details></p>\n'
                 num_violated_rules += 1
             os.remove(rule_filename)
 
@@ -117,8 +124,10 @@ def netpol_verify_main(args=None):
     parser.add_argument('--pr_url', type=str, help='The full api url for adding a PR comment')
     parser.add_argument('--ghe_token', '--gh_token', type=str, help='A valid token to access a GitHub repository')
     parser.add_argument('--nca_path', type=str, help='The path to where Network-Config-Analyzer is installed',
-                        default=Path(Path(__file__).parent.absolute(), '..', '..', 'network-config-analyzer'))
+                        default=Path(Path(__file__).parent.absolute(),
+                                     '..', '..', 'network-config-analyzer', 'network-config-analyzer'))
     parser.add_argument('--tmp_dir', type=str, help="A directory into which verifier's temporary files can be written")
+    parser.add_argument('--debug', type=int, help="Set to 1 to print debug information")
     args = parser.parse_args(args)
 
     if args.ghe_token:
@@ -127,7 +136,7 @@ def netpol_verify_main(args=None):
     if args.tmp_dir:
         os.chdir(args.tmp_dir)
 
-    return NetpolVerifier(args.netpol_file, args.baseline, args.repo, args.nca_path).verify(args.pr_url)
+    return NetpolVerifier(args.netpol_file, args.baseline, args.repo, args.nca_path).verify(args.pr_url, args.debug)
 
 
 if __name__ == "__main__":
