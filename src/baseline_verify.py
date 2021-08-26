@@ -117,7 +117,7 @@ def netpol_verify_main(args=None):
     """
     parser = argparse.ArgumentParser(description='A verifier for K8s Network Policies')
     parser.add_argument('netpol_file', type=str, help='A yaml file containing k8s NetworkPolicy resources')
-    parser.add_argument('--baseline', '-b', type=open, metavar='FILE', action='append', required=True,
+    parser.add_argument('--baseline', '-b', type=str, metavar='FILE', action='append', required=True,
                         help='A baseline-rules file')
     parser.add_argument('--repo', '-r', type=str, metavar='REPOSITORY', required=True,
                         help="Repository with the app's deployments")
