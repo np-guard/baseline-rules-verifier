@@ -7,7 +7,12 @@ This application verifies the connectivity in a given Kubernetes cluster
 * Python 3.7 or above
 * An installation of [NCA](https://github.com/IBM/network-config-analyzer)
 
-### Installation:
+### Run from a docker image
+```commandline
+docker run ghcr.io/shift-left-netconfig/baseline-rules-verifier:1.3.0 -b /baseline-rules-verifier/baseline-rules/examples/allow_access_to_google.yaml -r https://github.com/GoogleCloudPlatform/microservices-demo/tree/master/release https://github.com/shift-left-netconfig/baseline-rules-verifier/blob/master/tests/netpols/microservices-netpols.yaml
+```
+
+### Local Installation:
 ```commandline
 git clone --recurse-submodules https://github.com/shift-left-netconfig/baseline-rules-verifier.git
 cd baseline-rules-verifier
