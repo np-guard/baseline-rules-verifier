@@ -68,13 +68,10 @@ class NetpolVerifier:
         self.repo = repo
         self.nca_path = nca_path
 
-    def verify(self, output_format, out_file, pr_url, debug):
+    def verify(self, args):
         """
         This function is where the actual rule verification happens
-        :param str output_format: How to format textual output ("txt" or "md")
-        :param out_file: If not None, writing the output to this file
-        :param str pr_url: The URL of the PR into which the output should be sent as a comment (if None, send to stdout)
-        :param debug: If not None, prints more debug information
+        :param args: The command-line arguments
         :return: Number of violated rules
         :rtype: int
         """
@@ -87,12 +84,12 @@ class NetpolVerifier:
 
         rule_results = []
         for rule in self.baseline_rules:
-            rule_filename = f'{rule.name}.yaml'
+            rule_filename = Path(args.tmp_dir, f'{rule.name}.yaml')
             with open(rule_filename, 'w') as baseline_file:
                 yaml.dump(rule.to_netpol(), baseline_file)
             query = '--forbids' if rule.action == BaselineRuleAction.deny else '--permits'
             nca_run = subprocess.run(fixed_args + [query, rule_filename], capture_output=True, text=True, check=False)
-            if debug is not None:
+            if args.debug is not None:
                 details = nca_run.stdout + '\n' + nca_run.stderr
             elif nca_run.returncode != 0:
                 details = '\n\n'.join(str(nca_run.stdout).split('\n')[2:5])
@@ -101,7 +98,7 @@ class NetpolVerifier:
             rule_results.append(RuleResults(rule.name, nca_run.returncode == 0, details))
             os.remove(rule_filename)
 
-        output = '\n'.join(rule_result.to_str(output_format) for rule_result in rule_results)
+        output = '\n'.join(rule_result.to_str(args.format) for rule_result in rule_results)
         num_violated_rules = len([rule_result for rule_result in rule_results if not rule_result.satisfied])
         if num_violated_rules == 1:
             output += f'\n1 rule (out of {len(self.baseline_rules)}) is violated\n'
@@ -110,10 +107,10 @@ class NetpolVerifier:
         else:
             output += '\nAll rules are satisfied\n'
 
-        if pr_url:
-            self.write_git_comment(pr_url, output)
-        if out_file:
-            out_file.write(output)
+        if args.pr_url:
+            self.write_git_comment(args.pr_url, output)
+        if args.out_file:
+            args.out_file.write(output)
         print(output)
 
         return num_violated_rules
@@ -170,11 +167,8 @@ def netpol_verify_main(args=None):
     if args.ghe_token:
         os.environ['GHE_TOKEN'] = args.ghe_token
 
-    if args.tmp_dir:
-        os.chdir(args.tmp_dir)
-
     npv = NetpolVerifier(args.netpol_file, args.baseline, args.repo, args.nca_path)
-    return npv.verify(args.format, args.out_file, args.pr_url, args.debug)
+    return npv.verify(args)
 
 
 if __name__ == "__main__":
