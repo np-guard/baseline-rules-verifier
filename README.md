@@ -5,6 +5,7 @@ This application verifies the connectivity in a given Kubernetes cluster
 ### Requirements:
 
 * Python 3.7 or above
+* An installation of [NCA](https://github.com/IBM/network-config-analyzer)
 
 ### Installation:
 ```commandline
