@@ -1,0 +1,11 @@
+Rule allow-load-generation is satisfied
+
+Rule no-ftp is satisfied
+
+Rule no-telnet is satisfied
+
+Rule no-smtp is satisfied
+
+Rule no-imap is satisfied
+
+All rules are satisfied

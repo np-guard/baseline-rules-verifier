@@ -4,13 +4,25 @@
     "repo": "https://github.com/GoogleCloudPlatform/microservices-demo/tree/master/release",
     "netpols": "microservices-netpols.yaml",
     "baselineFiles": ["allow_access_to_google.yaml"],
+    "outFile": "microservices-access-to-google-is-denied.md",
     "expected": 1
   },
   {
     "name": "microservices-allow-load-generation",
     "repo": "https://github.com/GoogleCloudPlatform/microservices-demo/tree/master/release",
     "netpols": "microservices-netpols.yaml",
-    "baselineFiles": ["allow_load_generation.yaml"],
+    "baselineFiles": ["allow_load_generation.yaml", "ciso_denied_ports.yaml"],
+    "outFile": "5-valid-checks.md",
+    "args": ["--format", "md"],
+    "expected": 0
+  },
+  {
+    "name": "microservices-allow-load-generation",
+    "repo": "https://github.com/GoogleCloudPlatform/microservices-demo/tree/master/release",
+    "netpols": "microservices-netpols.yaml",
+    "baselineFiles": ["allow_load_generation.yaml", "ciso_denied_ports.yaml"],
+    "outFile": "5-valid-checks.txt",
+    "args": ["--format", "txt"],
     "expected": 0
   }
 ]
