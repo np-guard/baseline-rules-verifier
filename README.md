@@ -11,7 +11,7 @@ This application verifies the connectivity in a given Kubernetes cluster
 git clone --recurse-submodules https://github.com/shift-left-netconfig/baseline-rules-verifier.git
 cd baseline-rules-verifier
 python3 -m venv venv
-source venv/bin/activate.csh  # the exact script may depend on the shell you are using
+source venv/bin/activate  # the exact script may depend on the shell you are using
 pip install -r requirements.txt
 ```
 
