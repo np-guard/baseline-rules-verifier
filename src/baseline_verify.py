@@ -12,6 +12,7 @@ import subprocess
 import os
 import sys
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from urllib import request
 import yaml
@@ -21,6 +22,39 @@ common_services_dir = (base_dir / '../baseline-rules/src').resolve()
 sys.path.insert(0, str(common_services_dir))
 
 from baseline_rule import BaselineRules, BaselineRuleAction
+
+
+@dataclass
+class RuleResults:
+    rule_name: str   # The name of the rule
+    satisfied: bool  # Whether the rule is valid
+    details: str     # A detailed explanation why rule is not valid
+
+    def _satisfaction_str(self):
+        return 'satisfied' if self.satisfied else 'violated'
+
+    def _to_plain_text(self):
+        ret = f'Rule {self.rule_name} is {self._satisfaction_str()}\n'
+        if self.details:
+            ret += self.details + '\n'
+        return ret
+
+    def _to_md_format(self):
+        ret = ':white_check_mark:' if self.satisfied else ':x:'
+        ret += f'Rule **{self.rule_name}** is {self._satisfaction_str()}\n'
+        if self.details:
+            ret += '<p><details><summary>Details</summary>' + self.details + '\n</details></p>'
+        return ret
+
+    def to_str(self, text_format):
+        """
+        :param text_format: How to format the result ("md" or "txt")
+        :return: Rule result as text, formatted according to the text format
+        :rtype: str
+        """
+        if text_format == 'md':
+            return self._to_md_format()
+        return self._to_plain_text()
 
 
 class NetpolVerifier:
@@ -34,41 +68,41 @@ class NetpolVerifier:
         self.repo = repo
         self.nca_path = nca_path
 
-    def verify(self, pr_url, debug):
+    def verify(self, output_format, out_file, pr_url, debug):
         """
         This function is where the actual rule verification happens
+        :param str output_format: How to format textual output ("txt" or "md")
+        :param out_file: If not None, writing the output to this file
         :param str pr_url: The URL of the PR into which the output should be sent as a comment (if None, send to stdout)
         :param debug: If not None, prints more debug information
         :return: Number of violated rules
         :rtype: int
         """
-        nca_path = Path(self.nca_path, 'nca.py')
-        fixed_args = [sys.executable, nca_path, '--base_np_list', self.netpol_file, '--pod_list', self.repo,
-                      '--ns_list', self.repo]
+        if not self.baseline_rules:
+            print('No rules to check')
+            return 0
 
-        num_violated_rules = 0
-        output = ''
+        fixed_args = [sys.executable, Path(self.nca_path, 'nca.py'), '--base_np_list', self.netpol_file,
+                      '--pod_list', self.repo, '--ns_list', self.repo]
+
+        rule_results = []
         for rule in self.baseline_rules:
             rule_filename = f'{rule.name}.yaml'
             with open(rule_filename, 'w') as baseline_file:
                 yaml.dump(rule.to_netpol(), baseline_file)
             query = '--forbids' if rule.action == BaselineRuleAction.deny else '--permits'
-            nca_args = fixed_args + [query, rule_filename]
-            nca_run = subprocess.run(nca_args, capture_output=True, text=True, check=False)
-            if nca_run.returncode == 0:
-                output += f'\n:white_check_mark: Rule **{rule.name}** is satisfied\n'
-                if debug is not None:
-                    output += '\n<p><details><summary>Details</summary>'
-                    output += nca_run.stdout + '\n' + nca_run.stderr + '\n</details></p>\n'
+            nca_run = subprocess.run(fixed_args + [query, rule_filename], capture_output=True, text=True, check=False)
+            if debug is not None:
+                details = nca_run.stdout + '\n' + nca_run.stderr
+            elif nca_run.returncode != 0:
+                details = '\n\n'.join(str(nca_run.stdout).split('\n')[2:5])
             else:
-                output += f'\n:x: Rule **{rule.name}** is violated\n<p><details><summary>Details</summary>'
-                if debug is not None:
-                    output += nca_run.stdout + '\n' + nca_run.stderr + '\n</details></p>\n'
-                else:
-                    output += '\n'.join(str(nca_run.stdout).split('\n')[2:5]) + '\n</details></p>\n'
-                num_violated_rules += 1
+                details = ''
+            rule_results.append(RuleResults(rule.name, nca_run.returncode == 0, details))
             os.remove(rule_filename)
 
+        output = '\n'.join(rule_result.to_str(output_format) for rule_result in rule_results)
+        num_violated_rules = len([rule_result for rule_result in rule_results if not rule_result.satisfied])
         if num_violated_rules == 1:
             output += f'\n1 rule (out of {len(self.baseline_rules)}) is violated\n'
         elif num_violated_rules:
@@ -78,8 +112,9 @@ class NetpolVerifier:
 
         if pr_url:
             self.write_git_comment(pr_url, output)
-        else:
-            print(output)
+        if out_file:
+            out_file.write(output)
+        print(output)
 
         return num_violated_rules
 
@@ -122,6 +157,8 @@ def netpol_verify_main(args=None):
     parser.add_argument('--repo', '-r', type=str, metavar='REPOSITORY', required=True,
                         help="Repository with the app's deployments")
     parser.add_argument('--pr_url', type=str, help='The full api url for adding a PR comment')
+    parser.add_argument('--out_file', '-o', type=argparse.FileType('w'), help='A file to dump output into')
+    parser.add_argument('--format', type=str, default='md', help='Output format ("md" or "txt")')
     parser.add_argument('--ghe_token', '--gh_token', type=str, help='A valid token to access a GitHub repository')
     parser.add_argument('--nca_path', type=str, help='The path to where Network-Config-Analyzer is installed',
                         default=Path(Path(__file__).parent.absolute(),
@@ -136,8 +173,9 @@ def netpol_verify_main(args=None):
     if args.tmp_dir:
         os.chdir(args.tmp_dir)
 
-    return NetpolVerifier(args.netpol_file, args.baseline, args.repo, args.nca_path).verify(args.pr_url, args.debug)
+    npv = NetpolVerifier(args.netpol_file, args.baseline, args.repo, args.nca_path)
+    return npv.verify(args.format, args.out_file, args.pr_url, args.debug)
 
 
 if __name__ == "__main__":
-    sys.exit(netpol_verify_main())
+    sys.exit(netpol_verify_main() > 0)
