@@ -80,9 +80,11 @@ def compare_files(output_filename, golden_filename):
                 if golden_file_line_num >= len(output_file_lines):
                     print('Error: Expected results have more lines than actual results')
                     return False
-                if golden_file_line != output_file_lines[golden_file_line_num]:
+                golden_file_line = golden_file_line.replace('\\', '/')  # avoid linux/windows path mismatches
+                output_file_line = output_file_lines[golden_file_line_num].replace('\\', '/')
+                if golden_file_line != output_file_line:
                     if golden_file_line.startswith('Allowed connections') and \
-                       output_file_lines[golden_file_line_num].startswith('Allowed connections'):
+                       output_file_line.startswith('Allowed connections'):
                         continue  # TODO: find a better solution to NCA's nondeterminism
                     print('Error: Result mismatch at line {}'.format(golden_file_line_num+1))
                     print(golden_file_line)
