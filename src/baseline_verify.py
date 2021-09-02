@@ -160,10 +160,10 @@ def netpol_verify_main(args=None):
     parser.add_argument('--out_file', '-o', type=argparse.FileType('w'), help='A file to dump output into')
     parser.add_argument('--format', type=str, default='md', help='Output format ("md" or "txt")')
     parser.add_argument('--ghe_token', '--gh_token', type=str, help='A valid token to access a GitHub repository')
-    parser.add_argument('--nca_path', type=str, help='The path to where Network-Config-Analyzer is installed',
-                        default=Path(Path(__file__).parent.absolute(),
-                                     '..', '..', 'network-config-analyzer', 'network-config-analyzer'))
-    parser.add_argument('--tmp_dir', type=str, help="A directory into which verifier's temporary files can be written")
+    parser.add_argument('--nca_path', type=str, default='/nca',
+                        help='The path to where Network-Config-Analyzer is installed')
+    parser.add_argument('--tmp_dir', type=str, default='/tmp',
+                        help="A directory into which verifier's temporary files can be written")
     parser.add_argument('--debug', type=int, help="Set to 1 to print debug information")
     args = parser.parse_args(args)
 
