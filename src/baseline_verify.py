@@ -162,13 +162,15 @@ def netpol_verify_main(args=None):
     parser.add_argument('--tmp_dir', type=str, default='/tmp',
                         help="A directory into which verifier's temporary files can be written")
     parser.add_argument('--debug', type=int, help="Set to 1 to print debug information")
+    parser.add_argument('--return_0', action='store_true', help='Force a return value 0')
     args = parser.parse_args(args)
 
     if args.ghe_token:
         os.environ['GHE_TOKEN'] = args.ghe_token
 
     npv = NetpolVerifier(args.netpol_file, args.baseline, args.repo, args.nca_path)
-    return npv.verify(args)
+    ret_val = npv.verify(args)
+    return 0 if args.return_0 else ret_val
 
 
 if __name__ == "__main__":
