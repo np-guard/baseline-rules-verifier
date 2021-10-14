@@ -43,7 +43,7 @@ class RuleResults:
         ret = ':white_check_mark:' if self.satisfied else ':x:'
         ret += f'Rule **{self.rule_name}** is {self._satisfaction_str()}\n'
         if self.details:
-            ret += '<p><details><summary>Details</summary>' + self.details + '\n</details></p>'
+            ret += '<p><details><summary>Details</summary>' + self.details + '\n</details></p>\n'
         return ret
 
     def to_str(self, text_format):
