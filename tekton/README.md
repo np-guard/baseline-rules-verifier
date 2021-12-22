@@ -48,4 +48,4 @@ spec:
       claimName: my-source
 ```
 
-For a more complete example, see [this PiplineRun](netpol-verify-plr.yaml).
+For a more complete example, see [this PipelineRun](netpol-verify-plr.yaml).
