@@ -27,7 +27,7 @@ spec:
       default: .
     - name: output-format
       type: string
-      description: The format in which to output verifitaion results (either "md" or "txt")
+      description: The format in which to output verification results (either "md" or "txt")
       default: md
     - name: output-dir
       type: string

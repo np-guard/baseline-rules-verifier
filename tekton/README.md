@@ -15,7 +15,7 @@ kubectl apply -f https://raw.githubusercontent.com/shift-left-netconfig/baseline
 * **corporate-policies**: An array of corporate policy files to check against (either as GitHub URLs or as paths under workspace).
 * **deployment-path**: The path in the 'source' workspace where deployment yamls are.  (_default:_ `.`)
 * **netpol-path**: The path in the 'source' workspace where the NetworkPolicy yamls are stored (_default:_ `.`)
-* **output-format**: The format in which to output verifitaion results (either "md" or "txt") (_default:_ `md`)
+* **output-format**: The format in which to output verification results (either "md" or "txt") (_default:_ `md`)
 * **output-dir**: The directory under 'source' workspace to write results file into (_default:_ `netpol-verify-output-dir`)
 
 ## Workspaces
