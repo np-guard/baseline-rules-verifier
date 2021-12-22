@@ -1,0 +1,74 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: k8s-netpol-verify
+  labels:
+    app.kubernetes.io/version: "0.1"
+  annotations:
+    tekton.dev/categories: "Kubernetes, Networking, Security"
+    tekton.dev/pipelines.minVersion: "0.17.0"
+    tekton.dev/tags: "Kubernetes, NetworkPolicy"
+    tekton.dev/platforms: "linux/amd64"
+    tekton.dev/displayName: "K8s NetworkPolicy Verification"
+spec:
+  description: >-
+    A task to verify connectivity compliance requirements, based on preset policies
+  params:
+    - name: corporate-policies
+      type: array
+      description: A list of corporate policy files to check against (either as GitHub URLs or as paths under workspace)
+    - name: deployment-path
+      type: string
+      description: The path in the 'source' workspace where deployment yamls are
+      default: .
+    - name: netpol-path
+      type: string
+      description: The path in the 'source' workspace where the NetworkPolicy yamls are stored
+      default: .
+    - name: output-format
+      type: string
+      description: The format in which to output verifitaion results (either "md" or "txt")
+      default: md
+    - name: output-dir
+      type: string
+      description: The directory under 'source' workspace to write results file into.
+      default: netpol-verify-output-dir
+  workspaces:
+    - name: source
+  results:
+    - name: num-violated-policies
+      description: The number of corporate policies which the cluster's connectivity graph violates
+    - name: policy-results-file
+      description: The name of the generated file under 'sources' workspace, which contains verification results for all policies
+  steps:
+    - name: make-result-dir # This step prepares the output directory, as baseline-rules-verifier runs without root permissions.
+      image: ubuntu
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        mkdir -p $(params.output-dir)
+        chmod a+w $(params.output-dir)
+    - name: baseline-requirements-validation
+      image: ghcr.io/shift-left-netconfig/baseline-rules-verifier:1.3.2
+      workingDir: $(workspaces.source.path)
+      args: ["$(params.corporate-policies[*])"]
+      script: |
+        #!/bin/sh
+        for policy in "$@"
+        do
+          POLICIES_WITH_B="-b $policy $POLICIES_WITH_B"
+        done
+
+        OUTFILE=$(params.output-dir)/netpol-verify-output.$(params.output-format)
+
+        python /baseline-rules-verifier/src/baseline_verify.py ${POLICIES_WITH_B} \
+          -r $(params.deployment-path) \
+          $(params.netpol-path) \
+          --tmp_dir /tmp \
+          --nca_path /nca \
+          --format $(params.output-format) \
+          -o $OUTFILE
+
+        VIOLATED=$?
+        printf '%s' "${VIOLATED}" | tee $(results.num-violated-policies.path)
+        printf '%s' "${OUTFILE}" | tee $(results.policy-results-file.path)

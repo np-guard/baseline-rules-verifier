@@ -1,0 +1,59 @@
+apiVersion: tekton.dev/v1beta1
+kind: PipelineRun
+metadata:
+  generateName: k8s-netpol-verify-test-pipeline-run-
+spec:
+  pipelineSpec:
+    workspaces:
+    - name: shared-workspace
+    tasks:
+    - name: fetch-repository
+      taskRef:
+        name: git-clone
+      workspaces:
+      - name: output
+        workspace: shared-workspace
+      params:
+      - name: url
+        value: https://github.com/shift-left-netconfig/online-boutique
+      - name: subdirectory
+        value: ""
+      - name: revision
+        value: set_netpols_1638888337
+      - name: deleteExisting
+        value: "true"
+    - name: verify-netpols
+      taskRef:
+        name: k8s-netpol-verify
+      runAfter:
+      - fetch-repository
+      workspaces:
+      - name: source
+        workspace: shared-workspace
+      params:
+      - name: corporate-policies
+        value:
+        - https://github.com/shift-left-netconfig/baseline-rules/blob/master/examples/restrict_access_to_payment.yaml
+        - https://github.com/shift-left-netconfig/baseline-rules/blob/master/examples/ciso_denied_ports.yaml
+    - name: post-pr-comment
+      taskRef:
+        name: github-add-comment
+      runAfter:
+      - verify-netpols
+      workspaces:
+      - name: comment-file
+        workspace: shared-workspace
+      params:
+      - name: REQUEST_URL
+        value: https://github.com/shift-left-netconfig/online-boutique/pull/45
+      - name: COMMENT_OR_FILE
+        value: "$(tasks.verify-netpols.results.policy-results-file)"
+  workspaces:
+  - name: shared-workspace
+    volumeClaimTemplate:
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Mi
