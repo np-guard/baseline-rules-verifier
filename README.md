@@ -9,12 +9,12 @@ This application verifies the connectivity in a given Kubernetes cluster
 
 ### Run from a docker image
 ```commandline
-docker run ghcr.io/shift-left-netconfig/baseline-rules-verifier:1.3.0 -b /baseline-rules-verifier/baseline-rules/examples/allow_access_to_google.yaml -r https://github.com/GoogleCloudPlatform/microservices-demo/tree/master/release https://github.com/shift-left-netconfig/baseline-rules-verifier/blob/master/tests/netpols/microservices-netpols.yaml
+docker run ghcr.io/np-guard/baseline-rules-verifier:1.3.0 -b /baseline-rules-verifier/baseline-rules/examples/allow_access_to_google.yaml -r https://github.com/GoogleCloudPlatform/microservices-demo/tree/master/release https://github.com/np-guard/baseline-rules-verifier/blob/master/tests/netpols/microservices-netpols.yaml
 ```
 
 ### Local Installation:
 ```commandline
-git clone --recurse-submodules https://github.com/shift-left-netconfig/baseline-rules-verifier.git
+git clone --recurse-submodules https://github.com/np-guard/baseline-rules-verifier.git
 cd baseline-rules-verifier
 python3 -m venv venv
 source venv/bin/activate  # the exact script may depend on the shell you are using
@@ -26,7 +26,7 @@ pip install -r requirements.txt
 python src/baseline_verify.py -r <repo> -b <baseline_rules_file1> [-b <baseline_rules_file2> ...] <networkpolicy_file>
 ```
 * `repo` is a path or url to the repository where deployments are defined 
-* `baseline_rules_file` is a yaml file containing a list of baseline rules. See [file format definition](https://github.com/shift-left-netconfig/baseline-rules#baseline-rules) and [these examples](https://github.com/shift-left-netconfig/baseline-rules/tree/master/examples)
+* `baseline_rules_file` is a yaml file containing a list of baseline rules. See [file format definition](https://github.com/np-guard/baseline-rules#baseline-rules) and [these examples](https://github.com/np-guard/baseline-rules/tree/master/examples)
 * `networkpolicy_file` is a yaml file with Kubernetes NetworkPolicies to verify
 
 **For example:**
