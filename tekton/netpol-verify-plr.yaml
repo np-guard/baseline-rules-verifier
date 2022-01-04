@@ -15,7 +15,7 @@ spec:
         workspace: shared-workspace
       params:
       - name: url
-        value: https://github.com/shift-left-netconfig/online-boutique
+        value: https://github.com/np-guard/online-boutique
       - name: subdirectory
         value: ""
       - name: revision
@@ -33,8 +33,8 @@ spec:
       params:
       - name: corporate-policies
         value:
-        - https://github.com/shift-left-netconfig/baseline-rules/blob/master/examples/restrict_access_to_payment.yaml
-        - https://github.com/shift-left-netconfig/baseline-rules/blob/master/examples/ciso_denied_ports.yaml
+        - https://github.com/np-guard/baseline-rules/blob/master/examples/restrict_access_to_payment.yaml
+        - https://github.com/np-guard/baseline-rules/blob/master/examples/ciso_denied_ports.yaml
     - name: post-pr-comment
       taskRef:
         name: github-add-comment
@@ -45,7 +45,7 @@ spec:
         workspace: shared-workspace
       params:
       - name: REQUEST_URL
-        value: https://github.com/shift-left-netconfig/online-boutique/pull/45
+        value: https://github.com/np-guard/online-boutique/pull/45
       - name: COMMENT_OR_FILE
         value: "$(tasks.verify-netpols.results.policy-results-file)"
   workspaces:

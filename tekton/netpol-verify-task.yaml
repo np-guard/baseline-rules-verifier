@@ -49,7 +49,7 @@ spec:
         mkdir -p $(params.output-dir)
         chmod a+w $(params.output-dir)
     - name: baseline-requirements-validation
-      image: ghcr.io/shift-left-netconfig/baseline-rules-verifier:1.3.2
+      image: ghcr.io/np-guard/baseline-rules-verifier:1.3.2
       workingDir: $(workspaces.source.path)
       args: ["$(params.corporate-policies[*])"]
       script: |

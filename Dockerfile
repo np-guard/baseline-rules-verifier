@@ -1,4 +1,4 @@
-FROM ghcr.io/shift-left-netconfig/nca:1.0
+FROM ghcr.io/np-guard/nca:1.0
 
 COPY src/ /baseline-rules-verifier/src/
 COPY baseline-rules/ /baseline-rules-verifier/baseline-rules/

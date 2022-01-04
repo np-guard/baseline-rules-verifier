@@ -1,14 +1,14 @@
 # k8s-netpol-verify
 
-This Task checks the connectivity in a given Kubernetes cluster against a set of corporate policies. It will first extract the cluster's connectivity graph by scanning your repository for YAML files containing endpoint resources (e.g., Deployments) or connectivity resources (Kubernetes NetworkPolicies). It will then verify that the connectivity graph adheres to a set of corporate policies, given as the Task's input. Corporate policies are defined in YAML files; their syntax is defined [here](https://github.com/shift-left-netconfig/baseline-rules).
+This Task checks the connectivity in a given Kubernetes cluster against a set of corporate policies. It will first extract the cluster's connectivity graph by scanning your repository for YAML files containing endpoint resources (e.g., Deployments) or connectivity resources (Kubernetes NetworkPolicies). It will then verify that the connectivity graph adheres to a set of corporate policies, given as the Task's input. Corporate policies are defined in YAML files; their syntax is defined [here](https://github.com/np-guard/baseline-rules).
 
-This Task is part of a wider attempt to provide [shift-left automation for generating and maintaining Kubernetes Network Policies](https://shift-left-netconfig.github.io/).
+This Task is part of a wider attempt to provide [shift-left automation for generating and maintaining Kubernetes Network Policies](https://np-guard.github.io/).
 
 
 ## Install the Task
 
 ```
-kubectl apply -f https://raw.githubusercontent.com/shift-left-netconfig/baseline-rules-verifier/master/tekton/netpol-verify-task.yaml
+kubectl apply -f https://raw.githubusercontent.com/np-guard/baseline-rules-verifier/master/tekton/netpol-verify-task.yaml
 ```
 
 ## Parameters
@@ -40,8 +40,8 @@ spec:
   params:
   - name: corporate-policies
     value:
-    - https://github.com/shift-left-netconfig/baseline-rules/blob/master/examples/restrict_access_to_payment.yaml
-    - https://github.com/shift-left-netconfig/baseline-rules/blob/master/examples/ciso_denied_ports.yaml
+    - https://github.com/np-guard/baseline-rules/blob/master/examples/restrict_access_to_payment.yaml
+    - https://github.com/np-guard/baseline-rules/blob/master/examples/ciso_denied_ports.yaml
   workspaces:
   - name: source
     persistentVolumeClaim:
