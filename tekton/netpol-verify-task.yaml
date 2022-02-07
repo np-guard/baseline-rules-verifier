@@ -44,14 +44,26 @@ spec:
     - name: make-result-dir # This step prepares the output directory, as baseline-rules-verifier runs without root permissions.
       image: ubuntu
       workingDir: $(workspaces.source.path)
+      env:
+      - name: PARAMS_OUTPUT_DIR
+        value: $(params.output-dir)
       script: |
         #!/bin/sh
-        mkdir -p $(params.output-dir)
-        chmod a+w $(params.output-dir)
+        mkdir -p "$PARAMS_OUTPUT_DIR"
+        chmod a+w "$PARAMS_OUTPUT_DIR"
     - name: baseline-requirements-validation
       image: ghcr.io/np-guard/baseline-rules-verifier@sha256:e7ba1f274ebb471f5196a138040967a61681106c495a66008c31de48d8e0d12e
       workingDir: $(workspaces.source.path)
       args: ["$(params.corporate-policies[*])"]
+      env:
+      - name: PARAMS_OUTPUT_DIR
+        value: $(params.output-dir)
+      - name: PARAMS_OUTPUT_FORMAT
+        value: $(params.output-format)
+      - name: PARAMS_DEPLOYMENT_PATH
+        value: $(params.deployment-path)
+      - name: PARAMS_NETPOL_PATH
+        value: $(params.netpol-path)
       script: |
         #!/bin/sh
         for policy in "$@"
@@ -59,14 +71,14 @@ spec:
           POLICIES_WITH_B="-b $policy $POLICIES_WITH_B"
         done
 
-        OUTFILE=$(params.output-dir)/netpol-verify-output.$(params.output-format)
+        OUTFILE="$PARAMS_OUTPUT_DIR/netpol-verify-output.$PARAMS_OUTPUT_FORMAT"
 
         python /baseline-rules-verifier/src/baseline_verify.py ${POLICIES_WITH_B} \
-          -r $(params.deployment-path) \
-          $(params.netpol-path) \
+          -r "$PARAMS_DEPLOYMENT_PATH" \
+          "$PARAMS_NETPOL_PATH" \
           --tmp_dir /tmp \
           --nca_path /nca \
-          --format $(params.output-format) \
+          --format "$PARAMS_OUTPUT_FORMAT" \
           -o $OUTFILE
 
         VIOLATED=$?
