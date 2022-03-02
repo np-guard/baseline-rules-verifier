@@ -21,7 +21,7 @@ base_dir = Path(__file__).parent.resolve()
 common_services_dir = (base_dir / '../baseline-rules/src').resolve()
 sys.path.insert(0, str(common_services_dir))
 
-from baseline_rule import BaselineRules, BaselineRuleAction
+from baseline_rule import BaselineRules, BaselineRuleAction  # noqa: E402
 
 
 @dataclass
@@ -48,7 +48,7 @@ class RuleResults:
 
     def to_str(self, text_format):
         """
-        :param text_format: How to format the result ("md" or "txt")
+        :param str text_format: How to format the result ("md" or "txt")
         :return: Rule result as text, formatted according to the text format
         :rtype: str
         """
