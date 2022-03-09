@@ -9,7 +9,7 @@ This application verifies the connectivity in a given Kubernetes cluster
 
 ### Run from a docker image
 ```commandline
-docker run ghcr.io/np-guard/baseline-rules-verifier:1.3.0 -b /baseline-rules-verifier/baseline-rules/examples/allow_access_to_google.yaml -r https://github.com/GoogleCloudPlatform/microservices-demo/tree/master/release https://github.com/np-guard/baseline-rules-verifier/blob/master/tests/netpols/microservices-netpols.yaml
+docker run ghcr.io/np-guard/baseline-rules-verifier:1.3.0 -b /baseline-rules-verifier/baseline-rules/examples/allow_access_to_google.yaml -r https://github.com/GoogleCloudPlatform/microservices-demo/tree/main/release https://github.com/np-guard/baseline-rules-verifier/blob/master/tests/netpols/microservices-netpols.yaml
 ```
 
 ### Local Installation:
@@ -31,7 +31,7 @@ python src/baseline_verify.py -r <repo> -b <baseline_rules_file1> [-b <baseline_
 
 **For example:**
 ```commandline
-python src/baseline_verify.py -b baseline-rules/examples/allow_access_to_google.yaml -r https://github.com/GoogleCloudPlatform/microservices-demo/tree/master/release tests/netpols/microservices-netpols.yaml
+python src/baseline_verify.py -b baseline-rules/examples/allow_access_to_google.yaml -r https://github.com/GoogleCloudPlatform/microservices-demo/tree/main/release tests/netpols/microservices-netpols.yaml
 ```
 
 **More command-line switches:**
