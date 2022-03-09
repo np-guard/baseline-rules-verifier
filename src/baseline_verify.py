@@ -87,8 +87,7 @@ class NetpolVerifier:
             rule_filename = Path(args.tmp_dir, f'{rule.name}.yaml')
             with open(rule_filename, 'w') as baseline_file:
                 # TODO: use to_netpol() for rules with namespace
-                p1, p2 = rule.to_global_netpol_calico()
-                policies_list = [p1, p2] if p2 else [p1]
+                policies_list = rule.to_global_netpol_calico()
                 yaml.dump_all(policies_list, baseline_file)
 
             query = '--forbids' if rule.action == BaselineRuleAction.deny else '--permits'
