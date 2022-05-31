@@ -39,4 +39,4 @@ jobs:
           GHE_TOKEN: ${{ github.token }}
         run: |
           cd tests
-          python run_all_tests.py --nca_path ${{ github.workspace }}/network-config-analyzer/network-config-analyzer --debug=1
+          python run_all_tests.py --nca_path ${{ github.workspace }}/network-config-analyzer/network-config-analyzer
