@@ -86,7 +86,6 @@ class NetpolVerifier:
         for rule in self.baseline_rules:
             rule_filename = Path(args.tmp_dir, f'{rule.name}.yaml')
             with open(rule_filename, 'w') as baseline_file:
-                # TODO: use to_netpol() for rules with namespace
                 policies_list = rule.to_global_netpol_calico()
                 yaml.dump_all(policies_list, baseline_file)
 
@@ -95,7 +94,13 @@ class NetpolVerifier:
             if args.debug is not None:
                 details = nca_run.stdout + '\n' + nca_run.stderr
             elif nca_run.returncode != 0:
-                details = '\n\n'.join(str(nca_run.stdout).split('\n')[2:5])
+                topology_output_words = ['cluster has', 'unique endpoints', 'namespaces']
+                nca_stdout = str(nca_run.stdout).split('\n')
+                # Remove nca's output about cluster topology info to set details output
+                if all(word in nca_stdout[1] for word in topology_output_words):
+                    details = '\n\n'.join(nca_stdout[2:5])
+                else:
+                    details = '\n\n'.join(nca_stdout[1:4])
             else:
                 details = ''
             rule_results.append(RuleResults(rule.name, nca_run.returncode == 0, details))
