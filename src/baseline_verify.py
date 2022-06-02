@@ -96,6 +96,7 @@ class NetpolVerifier:
             elif nca_run.returncode != 0:
                 topology_output_words = ['cluster has', 'unique endpoints', 'namespaces']
                 nca_stdout = str(nca_run.stdout).split('\n')
+                # Remove nca's output about cluster topology info to set details output
                 if all(word in nca_stdout[1] for word in topology_output_words):
                     details = '\n\n'.join(nca_stdout[2:5])
                 else:
