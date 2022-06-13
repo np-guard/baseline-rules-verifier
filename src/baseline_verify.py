@@ -129,8 +129,8 @@ class NetpolVerifier:
                 yaml.dump_all(policies_list, baseline_file)
 
             query = '--forbids' if rule.action == BaselineRuleAction.deny else '--permits'
-            fixed_args += [query, str(rule_filename.absolute())]
-            nca_run, details = self._run_network_config_analyzer(fixed_args, args.debug)
+            nca_run, details = self._run_network_config_analyzer(fixed_args + [query, str(rule_filename.absolute())],
+                                                                 args.debug)
             rule_results.append(RuleResults(rule.name, nca_run == 0, details))
             try:
                 os.remove(rule_filename)
