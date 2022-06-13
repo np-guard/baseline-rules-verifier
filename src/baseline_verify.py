@@ -11,7 +11,6 @@ import argparse
 import os
 import sys
 import json
-from contextlib import contextmanager
 from dataclasses import dataclass
 from io import StringIO
 from pathlib import Path
@@ -70,32 +69,25 @@ class NetpolVerifier:
         self.baseline_rules = BaselineRules(baseline_rules_file)
         self.repo = repo
 
-    @contextmanager
-    def _hide_stderr(self):
-        new_stderr = os.dup(2)
-        dev_null = os.open(os.devnull, os.O_WRONLY)
-        os.dup2(dev_null, 2)
-        os.close(dev_null)
-        yield
-        os.dup2(new_stderr, 2)
-
-    def _run_network_config_analyzer(self, nca_args, debug_mode):
-        # redirecting nca's stdout to a buffer
+    @staticmethod
+    def _run_network_config_analyzer(nca_args, debug_mode):
+        # redirecting nca's stdout and stderr to buffers
         old_stdout = sys.stdout
+        old_stderr = sys.stderr
         sys.stdout = new_stdout = StringIO()
-        # call nca's main function considering debug mode to print or hide the nca's stderr output
-        if debug_mode is not None:
-            nca_run = nca.nca_main(nca_args)
-        else:  # if debug mode is off , nca's stderr messages are hidden
-            with self._hide_stderr():
-                nca_run = nca.nca_main(nca_args)
-        # read nca's output values from the redirected stdout
+        sys.stderr = new_stderr = StringIO()
+
+        nca_run = nca.nca_main(nca_args)
+
+        # read nca's output values from the redirected stdout and stderr
         nca_stdout = new_stdout.getvalue()
-        # stop redirecting stdout to the buffer
+        nca_stderr = new_stderr.getvalue()
+        # stop redirecting stdout and stderr to the buffers
         sys.stdout = old_stdout
+        sys.stderr = old_stderr
 
         if debug_mode is not None:
-            details = nca_stdout
+            details = nca_stdout + '\n' + nca_stderr
         elif nca_run != 0:
             topology_output_words = ['cluster has', 'unique endpoints', 'namespaces']
             nca_out = nca_stdout.split('\n')
