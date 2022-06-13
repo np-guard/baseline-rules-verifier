@@ -22,7 +22,7 @@ jobs:
           repository:  IBM/network-config-analyzer
           path: network-config-analyzer
       - name: Setup Python
-        uses: actions/setup-python@v3
+        uses: actions/setup-python@v4
         with:
           python-version: 3.8
           architecture: x64
