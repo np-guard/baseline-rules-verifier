@@ -5,7 +5,6 @@ This application verifies the connectivity in a given Kubernetes cluster
 ### Requirements:
 
 * Python 3.8 or above
-* An installation of [NCA](https://github.com/IBM/network-config-analyzer)
 
 ### Run from a docker image
 ```commandline
@@ -39,4 +38,3 @@ python src/baseline_verify.py -b baseline-rules/examples/allow_access_to_google.
 * `--pr_url <url>` - add a PR comment with verification output, using the given API url
 * `--format <text_format>` - Use the given text_format to format output. Supported formats are "txt" and "md"
 * `--ghe_token <token>` - Use the given token to access GitHub repos
-* `--nca_path <nca_path>` - Specify the path to where [Network-Config-Analyzer](https://github.com/IBM/network-config-analyzer) is installed
