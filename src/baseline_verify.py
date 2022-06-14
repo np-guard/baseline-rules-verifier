@@ -124,10 +124,7 @@ class NetpolVerifier:
             nca_run, details = self._run_network_config_analyzer(fixed_args + [query, str(rule_filename.absolute())],
                                                                  args.debug)
             rule_results.append(RuleResults(rule.name, nca_run == 0, details))
-            try:
-                os.remove(rule_filename)
-            except PermissionError:
-                print(f'{rule_filename} could not be deleted automatically', file=sys.stderr)
+            os.remove(rule_filename)
 
         output = '\n'.join(rule_result.to_str(args.format) for rule_result in rule_results)
         num_violated_rules = len([rule_result for rule_result in rule_results if not rule_result.satisfied])
