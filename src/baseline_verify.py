@@ -8,14 +8,16 @@ This module allows verifying a set of network policies against a set of baseline
 """
 
 import argparse
-import subprocess
 import os
 import sys
 import json
 from dataclasses import dataclass
+from io import StringIO
 from pathlib import Path
 from urllib import request
 import yaml
+from nca import nca
+
 
 base_dir = Path(__file__).parent.resolve()
 common_services_dir = (base_dir / '../baseline-rules/src').resolve()
@@ -62,11 +64,41 @@ class NetpolVerifier:
     The main class for verifying a cluster connectivity against baseline rules.
     Converts baseline rules to k8s NetworkPolicy and runs NCA to verify cluster connectivity.
     """
-    def __init__(self, netpol_file, baseline_rules_file, repo, nca_path):
+    def __init__(self, netpol_file, baseline_rules_file, repo):
         self.netpol_file = netpol_file
         self.baseline_rules = BaselineRules(baseline_rules_file)
         self.repo = repo
-        self.nca_path = nca_path
+
+    @staticmethod
+    def _run_network_config_analyzer(nca_args, debug_mode):
+        # redirecting nca's stdout and stderr to buffers
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = new_stdout = StringIO()
+        sys.stderr = new_stderr = StringIO()
+
+        nca_run = nca.nca_main(nca_args)
+
+        # read nca's output values from the redirected stdout and stderr
+        nca_stdout = new_stdout.getvalue()
+        nca_stderr = new_stderr.getvalue()
+        # stop redirecting stdout and stderr to the buffers
+        sys.stdout = old_stdout
+        sys.stderr = old_stderr
+
+        if debug_mode is not None:
+            details = nca_stdout + '\n' + nca_stderr
+        elif nca_run != 0:
+            topology_output_words = ['cluster has', 'unique endpoints', 'namespaces']
+            nca_out = nca_stdout.split('\n')
+            # Remove nca's output about cluster topology info to set details output
+            if all(word in nca_out[1] for word in topology_output_words):
+                details = '\n\n'.join(nca_out[2:5])
+            else:
+                details = '\n\n'.join(nca_out[1:4])
+        else:
+            details = ''
+        return nca_run, details
 
     def verify(self, args):
         """
@@ -79,8 +111,7 @@ class NetpolVerifier:
             print('No rules to check')
             return 0
 
-        fixed_args = [sys.executable, Path(self.nca_path, 'nca.py'), '--base_np_list', self.netpol_file,
-                      '--pod_list', self.repo, '--ns_list', self.repo]
+        fixed_args = ['--base_np_list', self.netpol_file, '--pod_list', self.repo, '--ns_list', self.repo]
 
         rule_results = []
         for rule in self.baseline_rules:
@@ -90,20 +121,9 @@ class NetpolVerifier:
                 yaml.dump_all(policies_list, baseline_file)
 
             query = '--forbids' if rule.action == BaselineRuleAction.deny else '--permits'
-            nca_run = subprocess.run(fixed_args + [query, rule_filename], capture_output=True, text=True, check=False)
-            if args.debug is not None:
-                details = nca_run.stdout + '\n' + nca_run.stderr
-            elif nca_run.returncode != 0:
-                topology_output_words = ['cluster has', 'unique endpoints', 'namespaces']
-                nca_stdout = str(nca_run.stdout).split('\n')
-                # Remove nca's output about cluster topology info to set details output
-                if all(word in nca_stdout[1] for word in topology_output_words):
-                    details = '\n\n'.join(nca_stdout[2:5])
-                else:
-                    details = '\n\n'.join(nca_stdout[1:4])
-            else:
-                details = ''
-            rule_results.append(RuleResults(rule.name, nca_run.returncode == 0, details))
+            nca_run, details = self._run_network_config_analyzer(fixed_args + [query, str(rule_filename.absolute())],
+                                                                 args.debug)
+            rule_results.append(RuleResults(rule.name, nca_run == 0, details))
             os.remove(rule_filename)
 
         output = '\n'.join(rule_result.to_str(args.format) for rule_result in rule_results)
@@ -165,8 +185,6 @@ def netpol_verify_main(args=None):
     parser.add_argument('--out_file', '-o', type=argparse.FileType('w'), help='A file to dump output into')
     parser.add_argument('--format', type=str, default='md', help='Output format ("md" or "txt")')
     parser.add_argument('--ghe_token', '--gh_token', type=str, help='A valid token to access a GitHub repository')
-    parser.add_argument('--nca_path', type=str, default='/nca',
-                        help='The path to where Network-Config-Analyzer is installed')
     parser.add_argument('--tmp_dir', type=str, default='/tmp',
                         help="A directory into which verifier's temporary files can be written")
     parser.add_argument('--debug', type=int, help="Set to 1 to print debug information")
@@ -176,7 +194,7 @@ def netpol_verify_main(args=None):
     if args.ghe_token:
         os.environ['GHE_TOKEN'] = args.ghe_token
 
-    npv = NetpolVerifier(args.netpol_file, args.baseline, args.repo, args.nca_path)
+    npv = NetpolVerifier(args.netpol_file, args.baseline, args.repo)
     ret_val = npv.verify(args)
     return 0 if args.return_0 else ret_val
 
