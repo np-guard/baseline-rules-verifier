@@ -77,7 +77,7 @@ class NetpolVerifier:
         sys.stdout = new_stdout = StringIO()
         sys.stderr = new_stderr = StringIO()
 
-        nca_run = nca.nca_main(nca_args)
+        nca_run, nca_err = nca.nca_main(nca_args)
 
         # read nca's output values from the redirected stdout and stderr
         nca_stdout = new_stdout.getvalue()
@@ -98,7 +98,7 @@ class NetpolVerifier:
                 details = '\n\n'.join(nca_out[1:4])
         else:
             details = ''
-        return nca_run, details
+        return nca_run, details, nca_err
 
     def verify(self, args):
         """
@@ -114,6 +114,8 @@ class NetpolVerifier:
         fixed_args = ['--base_np_list', self.netpol_file, '--pod_list', self.repo, '--ns_list', self.repo]
 
         rule_results = []
+        num_not_executed_queries = 0
+        err_messages = ''
         for rule in self.baseline_rules:
             rule_filename = Path(args.tmp_dir, f'{rule.name}.yaml')
             with open(rule_filename, 'w') as baseline_file:
@@ -121,9 +123,13 @@ class NetpolVerifier:
                 yaml.dump_all(policies_list, baseline_file)
 
             query = '--forbids' if rule.action == BaselineRuleAction.deny else '--permits'
-            nca_run, details = self._run_network_config_analyzer(fixed_args + [query, str(rule_filename.absolute())],
-                                                                 args.debug)
-            rule_results.append(RuleResults(rule.name, nca_run == 0, details))
+            nca_run, details, nca_err = \
+                self._run_network_config_analyzer(fixed_args + [query, str(rule_filename.absolute())], args.debug)
+            if not nca_err:
+                rule_results.append(RuleResults(rule.name, nca_run == 0, details))
+            else:
+                num_not_executed_queries += 1
+                err_messages += f'Query {query} was not executed on {rule.name}:\n {details} \n'
             os.remove(rule_filename)
 
         output = '\n'.join(rule_result.to_str(args.format) for rule_result in rule_results)
@@ -132,7 +138,10 @@ class NetpolVerifier:
             output += f'\n1 rule (out of {len(self.baseline_rules)}) is violated\n'
         elif num_violated_rules:
             output += f'\n{num_violated_rules} rules (out of {len(self.baseline_rules)}) are violated\n'
-        else:
+        if num_not_executed_queries:
+            output += f'\nNumber of queries that were not executed by nca on the relevant rule is ' \
+                      f'{num_not_executed_queries}\n'
+        if not num_violated_rules and not num_not_executed_queries:
             output += '\nAll rules are satisfied\n'
 
         if args.pr_url:
@@ -140,8 +149,10 @@ class NetpolVerifier:
         if args.out_file:
             args.out_file.write(output)
         print(output)
+        if num_not_executed_queries:
+            print(err_messages)
 
-        return num_violated_rules
+        return num_violated_rules + num_not_executed_queries
 
     @staticmethod
     def write_git_comment(pr_url, comment_body):
