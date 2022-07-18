@@ -75,6 +75,7 @@ class NetpolVerifier:
 
     @staticmethod
     def _run_network_config_analyzer(nca_args, debug_mode):
+        exception_msg = ''
         try:
             # redirecting nca's stdout and stderr to buffers
             old_stdout = sys.stdout
