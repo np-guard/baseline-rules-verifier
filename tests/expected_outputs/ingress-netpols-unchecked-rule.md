@@ -1,5 +1,5 @@
 :x:Rule **allow-load-generation** is unchecked
-<p><details><summary>Details</summary>Ignoring PermitsQuery for tests/netpols/ingress-netpol.yaml with Ingress only
+<p><details><summary>Details</summary>Ignoring PermitsQuery for ingress-netpol.yaml with Ingress only
 
 
 
