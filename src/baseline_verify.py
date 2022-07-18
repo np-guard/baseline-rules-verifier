@@ -85,9 +85,8 @@ class NetpolVerifier:
             nca_run = nca.nca_main(nca_args)
 
         except Exception as e:
-            # stop redirecting stderr to the buffers
-            sys.stderr = old_stderr
-            raise Exception(e) from None
+            nca_run = 8  # nca_run > 3 indicates that the rule was not checked (query was not executed)
+            exception_msg = str(e)
 
         # read nca's output values from the redirected stdout and stderr
         nca_stdout = new_stdout.getvalue()
@@ -99,13 +98,16 @@ class NetpolVerifier:
         if debug_mode is not None:
             details = nca_stdout + '\n' + nca_stderr
         elif nca_run != 0:
-            topology_output_words = ['cluster has', 'unique endpoints', 'namespaces']
-            nca_out = nca_stdout.split('\n')
-            # Remove nca's output about cluster topology info to set details output
-            if all(word in nca_out[1] for word in topology_output_words):
-                details = '\n\n'.join(nca_out[2:5])
-            else:
-                details = '\n\n'.join(nca_out[1:4])
+            if exception_msg:  # nca raised an exception
+                details = exception_msg
+            else:  # nca query result was 1 (rule is violated) or query was not executed (rule is not checked)
+                topology_output_words = ['cluster has', 'unique endpoints', 'namespaces']
+                nca_out = nca_stdout.split('\n')
+                # Remove nca's output about cluster topology info to set details output
+                if all(word in nca_out[1] for word in topology_output_words):
+                    details = '\n\n'.join(nca_out[2:5])
+                else:
+                    details = '\n\n'.join(nca_out[1:4])
         else:
             details = ''
         return nca_run, details
