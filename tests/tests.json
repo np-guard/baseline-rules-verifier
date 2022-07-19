@@ -26,14 +26,6 @@
     "expected": 0
   },
   {
-    "name": "nca-does-not-check-the-rule",
-    "repo": "topology/ingress-service.yaml",
-    "netpols": "ingress-netpol.yaml",
-    "baselineFiles": ["allow_load_generation.yaml"],
-    "outFile": "ingress-netpols-unchecked-rule.md",
-    "expected": 1
-  },
-  {
     "name": "nca-raises-an-exception",
     "repo": "https://github.com/GoogleCloudPlatform/microservices-demo/tree/main/release",
     "netpols": "illegal-netpol.yaml",
