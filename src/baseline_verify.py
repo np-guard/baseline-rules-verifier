@@ -12,6 +12,7 @@ import os
 import sys
 import json
 from dataclasses import dataclass
+from enum import Enum
 from io import StringIO
 from pathlib import Path
 from urllib import request
@@ -26,24 +27,27 @@ sys.path.insert(0, str(common_services_dir))
 from baseline_rule import BaselineRules, BaselineRuleAction  # noqa: E402
 
 
+class RuleStatus(Enum):
+    satisfied = 0
+    violated = 1
+    unchecked = 2
+
+
 @dataclass
 class RuleResults:
     rule_name: str   # The name of the rule
-    satisfied: bool  # Whether the rule is valid
+    rule_status: RuleStatus  # Whether the rule is valid, violated or not checked
     details: str     # A detailed explanation why rule is not valid
 
-    def _satisfaction_str(self):
-        return 'satisfied' if self.satisfied else 'violated'
-
     def _to_plain_text(self):
-        ret = f'Rule {self.rule_name} is {self._satisfaction_str()}\n'
+        ret = f'Rule {self.rule_name} is {self.rule_status.name}\n'
         if self.details:
             ret += self.details + '\n'
         return ret
 
     def _to_md_format(self):
-        ret = ':white_check_mark:' if self.satisfied else ':x:'
-        ret += f'Rule **{self.rule_name}** is {self._satisfaction_str()}\n'
+        ret = ':white_check_mark:' if self.rule_status == RuleStatus.satisfied else ':x:'
+        ret += f'Rule **{self.rule_name}** is {self.rule_status.name}\n'
         if self.details:
             ret += '<p><details><summary>Details</summary>' + self.details + '\n</details></p>\n'
         return ret
@@ -71,13 +75,19 @@ class NetpolVerifier:
 
     @staticmethod
     def _run_network_config_analyzer(nca_args, debug_mode):
-        # redirecting nca's stdout and stderr to buffers
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-        sys.stdout = new_stdout = StringIO()
-        sys.stderr = new_stderr = StringIO()
+        exception_msg = ''
+        try:
+            # redirecting nca's stdout and stderr to buffers
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            sys.stdout = new_stdout = StringIO()
+            sys.stderr = new_stderr = StringIO()
 
-        nca_run = nca.nca_main(nca_args)
+            nca_run = nca.nca_main(nca_args)
+
+        except Exception as e:
+            nca_run = 8  # nca_run > 3 indicates that the rule was not checked (query was not executed)
+            exception_msg = str(e)
 
         # read nca's output values from the redirected stdout and stderr
         nca_stdout = new_stdout.getvalue()
@@ -89,13 +99,16 @@ class NetpolVerifier:
         if debug_mode is not None:
             details = nca_stdout + '\n' + nca_stderr
         elif nca_run != 0:
-            topology_output_words = ['cluster has', 'unique endpoints', 'namespaces']
-            nca_out = nca_stdout.split('\n')
-            # Remove nca's output about cluster topology info to set details output
-            if all(word in nca_out[1] for word in topology_output_words):
-                details = '\n\n'.join(nca_out[2:5])
-            else:
-                details = '\n\n'.join(nca_out[1:4])
+            if exception_msg:  # nca raised an exception
+                details = exception_msg
+            else:  # nca query result was 1 (rule is violated) or query was not executed (rule is not checked)
+                topology_output_words = ['cluster has', 'unique endpoints', 'namespaces']
+                nca_out = nca_stdout.split('\n')
+                # Remove nca's output about cluster topology info to set details output
+                if all(word in nca_out[1] for word in topology_output_words):
+                    details = '\n\n'.join(nca_out[2:5])
+                else:
+                    details = '\n\n'.join(nca_out[1:4])
         else:
             details = ''
         return nca_run, details
@@ -121,18 +134,27 @@ class NetpolVerifier:
                 yaml.dump_all(policies_list, baseline_file)
 
             query = '--forbids' if rule.action == BaselineRuleAction.deny else '--permits'
-            nca_run, details = self._run_network_config_analyzer(fixed_args + [query, str(rule_filename.absolute())],
-                                                                 args.debug)
-            rule_results.append(RuleResults(rule.name, nca_run == 0, details))
+            nca_run, details = \
+                self._run_network_config_analyzer(fixed_args + [query, str(rule_filename.absolute())], args.debug)
+            rule_status = RuleStatus.satisfied if nca_run == 0 else RuleStatus.unchecked if nca_run > 3\
+                else RuleStatus.violated
+            rule_results.append(RuleResults(rule.name, rule_status, details))
             os.remove(rule_filename)
 
         output = '\n'.join(rule_result.to_str(args.format) for rule_result in rule_results)
-        num_violated_rules = len([rule_result for rule_result in rule_results if not rule_result.satisfied])
+        num_violated_rules = len([rule_result for rule_result in rule_results
+                                  if rule_result.rule_status == RuleStatus.violated])
+        num_unchecked_rules = len([rule_result for rule_result in rule_results
+                                   if rule_result.rule_status == RuleStatus.unchecked])
         if num_violated_rules == 1:
             output += f'\n1 rule (out of {len(self.baseline_rules)}) is violated\n'
         elif num_violated_rules:
             output += f'\n{num_violated_rules} rules (out of {len(self.baseline_rules)}) are violated\n'
-        else:
+        if num_unchecked_rules == 1:
+            output += f'\n1 rule (out of {len(self.baseline_rules)}) is not checked\n'
+        elif num_unchecked_rules:
+            output += f'\n{num_unchecked_rules} rules (out of {len(self.baseline_rules)}) are not checked\n'
+        if not num_violated_rules and not num_unchecked_rules:
             output += '\nAll rules are satisfied\n'
 
         if args.pr_url:
@@ -141,7 +163,7 @@ class NetpolVerifier:
             args.out_file.write(output)
         print(output)
 
-        return num_violated_rules
+        return num_violated_rules + num_unchecked_rules
 
     @staticmethod
     def write_git_comment(pr_url, comment_body):
