@@ -17,7 +17,7 @@ from io import StringIO
 from pathlib import Path
 from urllib import request
 import yaml
-from nca import nca
+from nca import nca_cli
 
 
 base_dir = Path(__file__).parent.resolve()
@@ -76,15 +76,14 @@ class NetpolVerifier:
     @staticmethod
     def _run_network_config_analyzer(nca_args, debug_mode):
         exception_msg = ''
+        # redirecting NCA's stdout and stderr to buffers
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = new_stdout = StringIO()
+        sys.stderr = new_stderr = StringIO()
+
         try:
-            # redirecting nca's stdout and stderr to buffers
-            old_stdout = sys.stdout
-            old_stderr = sys.stderr
-            sys.stdout = new_stdout = StringIO()
-            sys.stderr = new_stderr = StringIO()
-
-            nca_run = nca.nca_main(nca_args)
-
+            nca_run = nca_cli.nca_main(nca_args)
         except Exception as e:
             nca_run = 8  # nca_run > 3 indicates that the rule was not checked (query was not executed)
             exception_msg = str(e)
