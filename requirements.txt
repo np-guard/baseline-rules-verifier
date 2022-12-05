@@ -1,2 +1,2 @@
 PyYAML==6.0
-network-config-analyzer==1.7.1
+network-config-analyzer==1.8.0
