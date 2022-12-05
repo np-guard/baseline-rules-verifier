@@ -1,5 +1,5 @@
 :x:Rule **allow-access-to-google** is violated
-<p><details><summary>Details</summary>netpols\microservices-netpols.yaml does not permit connections specified in \tmp\allow-access-to-google.yaml:
+<p><details><summary>Details</summary>netpols\microservices-netpols.yaml does not permit connections specified in \tmp\allow-access-to-google.yaml
 
 Connections allowed in /tmp/allow-access-to-google.yaml which are not a subset of those in netpols\microservices-netpols.yaml:
 
