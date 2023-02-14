@@ -11,6 +11,7 @@ import argparse
 import os
 import sys
 import json
+import contextlib
 from dataclasses import dataclass
 from enum import Enum
 from io import StringIO
@@ -76,38 +77,33 @@ class NetpolVerifier:
     @staticmethod
     def _run_network_config_analyzer(nca_args, debug_mode):
         exception_msg = ''
-        # redirecting NCA's stdout and stderr to buffers
-        old_stdout = sys.stdout
-        old_stderr = sys.stderr
-        sys.stdout = new_stdout = StringIO()
-        sys.stderr = new_stderr = StringIO()
 
         try:
-            nca_run = nca_cli.nca_main(nca_args)
+            with contextlib.redirect_stdout(StringIO()) as nca_stdout_io:
+                with contextlib.redirect_stderr(StringIO()) as nca_stderr_io:
+                    nca_run = nca_cli.nca_main(nca_args)
         except Exception as e:
             nca_run = 8  # nca_run > 3 indicates that the rule was not checked (query was not executed)
             exception_msg = str(e)
 
-        # read nca's output values from the redirected stdout and stderr
-        nca_stdout = new_stdout.getvalue()
-        nca_stderr = new_stderr.getvalue()
-        # stop redirecting stdout and stderr to the buffers
-        sys.stdout = old_stdout
-        sys.stderr = old_stderr
+        nca_stdout = nca_stdout_io.getvalue()
+        nca_stderr = nca_stderr_io.getvalue()
 
         if debug_mode is not None:
             details = nca_stdout + '\n' + nca_stderr
         elif nca_run != 0:
             if exception_msg:  # nca raised an exception
                 details = exception_msg
-            else:  # nca query result was 1 (rule is violated) or query was not executed (rule is not checked)
+            elif nca_run > 3:  # query was not executed (rule is not checked)
+                details = nca_stderr
+            else:  # nca query result was 1 (rule is violated)
                 topology_output_words = ['cluster has', 'unique endpoints', 'namespaces']
                 nca_out = nca_stdout.split('\n')
-                # Remove nca's output about cluster topology info to set details output
-                if all(word in nca_out[1] for word in topology_output_words):
-                    details = '\n\n'.join(nca_out[2:5])
-                else:
-                    details = '\n\n'.join(nca_out[1:4])
+                details = ''
+                for line in nca_out:
+                    if line and not line.startswith('Info:') and not all(word in line for word in topology_output_words) \
+                            and not line.endswith('is missing from the peer container'):
+                        details += line + '\n'
         else:
             details = ''
         return nca_run, details
