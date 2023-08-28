@@ -11,14 +11,13 @@ import argparse
 import os
 import sys
 import json
-import contextlib
 from dataclasses import dataclass
 from enum import Enum
-from io import StringIO
 from pathlib import Path
 from urllib import request
 import yaml
-from nca import nca_cli
+from nca.NetworkConfig.ResourcesHandler import ResourcesHandler
+from nca.NetworkConfig import NetworkConfigQuery, QueryOutputHandler
 
 
 base_dir = Path(__file__).parent.resolve()
@@ -75,67 +74,74 @@ class NetpolVerifier:
         self.repo = repo
 
     @staticmethod
-    def _run_network_config_analyzer(nca_args, debug_mode):
-        exception_msg = ''
+    def _check_rule(rule, user_network_config, res_handler, tmp_dir):
+        """
+        This function checks if a single baseline rule is satisfied by the user netpols
+        :param BaselineRule rule: The rule to check
+        :param NetworkConfig user_network_config: an NCA NetworkConfig object to hold the user-provided resources
+        :param ResourceHandle res_handler: an NCA ResourceHandler (needed to create the network config for the rule)
+        :param str tmp_dir: A temporary directory in which to write the netpols we generate from the rule
+        :return: Results of checking the rule (as a RuleResults class)
+        :rtype: RuleResults
+        """
+        rule_filename = Path(tmp_dir, f'{rule.name}.yaml')
+        with open(rule_filename, 'w') as baseline_file:
+            policies_list = rule.to_global_netpol_calico()
+            yaml.dump_all(policies_list, baseline_file)
 
-        try:
-            with contextlib.redirect_stdout(StringIO()) as nca_stdout_io:
-                with contextlib.redirect_stderr(StringIO()) as nca_stderr_io:
-                    nca_run = nca_cli.nca_main(nca_args)
-        except Exception as e:
-            nca_run = 8  # nca_run > 3 indicates that the rule was not checked (query was not executed)
-            exception_msg = str(e)
+        rule_network_config = res_handler.get_network_config([str(rule_filename.absolute())], None, None, None)
 
-        nca_stdout = nca_stdout_io.getvalue()
-        nca_stderr = nca_stderr_io.getvalue()
+        query = NetworkConfigQuery.ForbidsQuery(rule_network_config, user_network_config)
+        if rule.action == BaselineRuleAction.allow:
+            query = NetworkConfigQuery.PermitsQuery(rule_network_config, user_network_config)
+        query_answer = query.execute(True)
 
-        if debug_mode is not None:
-            details = nca_stdout + '\n' + nca_stderr
-        elif nca_run != 0:
-            if exception_msg:  # nca raised an exception
-                details = exception_msg
-            elif nca_run > 3:  # query was not executed (rule is not checked)
-                details = nca_stderr
-            else:  # nca query result was 1 (rule is violated)
-                topology_output_words = ['cluster has', 'unique endpoints', 'namespaces']
-                nca_out = nca_stdout.split('\n')
-                details = ''
-                for line in nca_out:
-                    if line and not line.startswith('Info:') and not all(word in line for word in topology_output_words) \
-                            and not line.endswith('is missing from the peer container'):
-                        details += line + '\n'
-        else:
-            details = ''
-        return nca_run, details
+        rule_status = RuleStatus.unchecked if query_answer.query_not_executed else \
+            RuleStatus.satisfied if query_answer.numerical_result == 0 else RuleStatus.violated
+        details = ''
+        if rule_status != RuleStatus.satisfied:
+            details = QueryOutputHandler.StringOutputHandler(True).compute_query_output(query_answer)
+
+        os.remove(rule_filename)
+        return RuleResults(rule.name, rule_status, details)
 
     def verify(self, args):
         """
-        This function is where the actual rule verification happens
+        This function iterates over all baseline rules and checks if they are satisfied by user netpols
+        Outputs well-formatted rule-checking results.
         :param args: The command-line arguments
-        :return: Number of violated rules
-        :rtype: int
+        :return: A list of rule results
+        :rtype: list[RuleResults]
         """
         if not self.baseline_rules:
             print('No rules to check')
             return 0
 
-        fixed_args = ['--base_np_list', self.netpol_file, '--pod_list', self.repo, '--ns_list', self.repo]
-
         rule_results = []
-        for rule in self.baseline_rules:
-            rule_filename = Path(args.tmp_dir, f'{rule.name}.yaml')
-            with open(rule_filename, 'w') as baseline_file:
-                policies_list = rule.to_global_netpol_calico()
-                yaml.dump_all(policies_list, baseline_file)
 
-            query = '--forbids' if rule.action == BaselineRuleAction.deny else '--permits'
-            nca_run, details = \
-                self._run_network_config_analyzer(fixed_args + [query, str(rule_filename.absolute())], args.debug)
-            rule_status = RuleStatus.satisfied if nca_run == 0 else RuleStatus.unchecked if nca_run > 3\
-                else RuleStatus.violated
-            rule_results.append(RuleResults(rule.name, rule_status, details))
-            os.remove(rule_filename)
+        try:
+            resource_handler = ResourcesHandler()
+            # We first build a dummy network config with no netpols, to create a common peer container with no live-sim stuff
+            resource_handler.get_network_config([], None, None, [self.repo], save_flag=True)
+            user_network_config = resource_handler.get_network_config([self.netpol_file], None, None, None)
+        except Exception as e:
+            for rule in self.baseline_rules:  # error in reading user repo/netpols - no rule can be checked
+                rule_results.append(RuleResults(rule.name, RuleStatus.unchecked, str(e)))
+        else:
+            for rule in self.baseline_rules:
+                rule_result = self._check_rule(rule, user_network_config, resource_handler, args.tmp_dir)
+                rule_results.append(rule_result)
 
+        return rule_results
+
+    def output_results(self, args, rule_results):
+        """
+        Outputs well-formatted rule-checking results.
+        :param args: The command-line arguments
+        :param rule_results: The results of checking all baseline rules against the user-provided repo+netpols
+        :return: Number of violated/unchecked rules
+        :rtype: int
+        """
         output = '\n'.join(rule_result.to_str(args.format) for rule_result in rule_results)
         num_violated_rules = len([rule_result for rule_result in rule_results
                                   if rule_result.rule_status == RuleStatus.violated])
@@ -212,7 +218,8 @@ def netpol_verify_main(args=None):
         os.environ['GHE_TOKEN'] = args.ghe_token
 
     npv = NetpolVerifier(args.netpol_file, args.baseline, args.repo)
-    ret_val = npv.verify(args)
+    rule_results = npv.verify(args)
+    ret_val = npv.output_results(args, rule_results)
     return 0 if args.return_0 else ret_val
 
 
