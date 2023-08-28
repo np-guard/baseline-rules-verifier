@@ -9,7 +9,7 @@
   },
   {
     "name": "microservices-allow-load-generation",
-    "repo": "https://github.com/GoogleCloudPlatform/microservices-demo/tree/main/release",
+    "repo": "resources/online_boutique.yaml",
     "netpols": "microservices-netpols.yaml",
     "baselineFiles": ["allow_load_generation.yaml", "ciso_denied_ports.yaml"],
     "outFile": "5-valid-checks.md",
@@ -18,7 +18,7 @@
   },
   {
     "name": "microservices-allow-load-generation",
-    "repo": "https://github.com/GoogleCloudPlatform/microservices-demo/tree/main/release",
+    "repo": "resources/online_boutique.yaml",
     "netpols": "microservices-netpols.yaml",
     "baselineFiles": ["allow_load_generation.yaml", "ciso_denied_ports.yaml"],
     "outFile": "5-valid-checks.txt",
@@ -27,7 +27,7 @@
   },
   {
     "name": "nca-raises-an-exception",
-    "repo": "https://github.com/GoogleCloudPlatform/microservices-demo/tree/main/release",
+    "repo": "resources/online_boutique.yaml",
     "netpols": "illegal-netpol.yaml",
     "baselineFiles": ["allow_load_generation.yaml"],
     "outFile": "illegal-netpols-unchecked-rule.md",
