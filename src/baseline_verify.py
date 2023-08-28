@@ -122,7 +122,7 @@ class NetpolVerifier:
         try:
             resource_handler = ResourcesHandler()
             # We first build a dummy network config with no netpols, to create a common peer container with no live-sim stuff
-            _ = resource_handler.get_network_config([], None, None, [self.repo], save_flag=True)
+            resource_handler.get_network_config([], None, None, [self.repo], save_flag=True)
             user_network_config = resource_handler.get_network_config([self.netpol_file], None, None, None)
         except Exception as e:
             for rule in self.baseline_rules:  # error in reading user repo/netpols - no rule can be checked
