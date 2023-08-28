@@ -110,8 +110,8 @@ class NetpolVerifier:
         This function iterates over all baseline rules and checks if they are satisfied by user netpols
         Outputs well-formatted rule-checking results.
         :param args: The command-line arguments
-        :return: Number of violated rules
-        :rtype: int
+        :return: A list of rule results
+        :rtype: list[RuleResults]
         """
         if not self.baseline_rules:
             print('No rules to check')
@@ -132,6 +132,16 @@ class NetpolVerifier:
                 rule_result = self._check_rule(rule, user_network_config, resource_handler, args.tmp_dir)
                 rule_results.append(rule_result)
 
+        return rule_results
+
+    def output_results(self, args, rule_results):
+        """
+        Outputs well-formatted rule-checking results.
+        :param args: The command-line arguments
+        :param rule_results: The results of checking all baseline rules against the user-provided repo+netpols
+        :return: Number of violated/unchecked rules
+        :rtype: int
+        """
         output = '\n'.join(rule_result.to_str(args.format) for rule_result in rule_results)
         num_violated_rules = len([rule_result for rule_result in rule_results
                                   if rule_result.rule_status == RuleStatus.violated])
@@ -208,7 +218,8 @@ def netpol_verify_main(args=None):
         os.environ['GHE_TOKEN'] = args.ghe_token
 
     npv = NetpolVerifier(args.netpol_file, args.baseline, args.repo)
-    ret_val = npv.verify(args)
+    rule_results = npv.verify(args)
+    ret_val = npv.output_results(args, rule_results)
     return 0 if args.return_0 else ret_val
 
 
